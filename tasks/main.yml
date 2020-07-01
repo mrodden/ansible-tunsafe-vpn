@@ -1,0 +1,69 @@
+---
+### install ###
+- name: install deps
+  become: yes
+  apt:
+    name:
+      - git
+      - clang-6.0
+      - make
+    state: present
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: download tunsafe code
+  git:
+    repo: https://github.com/TunSafe/TunSafe.git
+    dest: "/home/ubuntu/tunsafe"
+    version: master
+
+- name: compile and install
+  shell: |
+    if [ ! -z "$(which tunsafe)" ]; then
+      echo "detected tunsafe binary installed"
+      exit 0
+    else
+      echo "compiling and installing tunsafe"
+      cd /home/ubuntu/tunsafe && make && sudo make install
+      exit 22
+    fi
+  register: tunsafe_build
+  failed_when: "tunsafe_build.rc not in [0, 22]"
+  changed_when: "tunsafe_build.rc == 22"
+
+- name: test install
+  command: "tunsafe --version"
+  changed_when: false
+
+### config ###
+- name: create /etc/tunsafe
+  become: yes
+  file:
+    path: /etc/tunsafe
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: drop in sample config
+  become: yes
+  template:
+    src: wg0.conf.sample.j2
+    dest: /etc/tunsafe/wg0.conf.sample
+    owner: root
+    group: root
+    mode: '0600'
+
+### service config ###
+- name: drop in systemd unit file
+  become: yes
+  template:
+    src: tunsafe.service.j2
+    dest: /etc/systemd/system/tunsafe@.service
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: add ufw allow for tunsafe
+  become: yes
+  shell: "ufw allow 51820/udp"

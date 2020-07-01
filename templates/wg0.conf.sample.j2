@@ -1,0 +1,15 @@
+[Interface]
+Address = 172.16.10.1/24
+ListenPort = 51820
+MTU = 1420
+# PrivateKey = ...
+
+# For point to site VPN
+PostUp = sysctl -w net.ipv4.ip_forward=1; iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+## Example Peer Section ##
+# [Peer]
+# AllowedIPs = 172.16.10.2/32
+# PublicKey = ...
+# RequireToken = totp-sha1:...,digits=6,period=30,precision=15
